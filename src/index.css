@@ -1,0 +1,381 @@
+
+:root {
+  font-family: 'DM Sans', sans-serif;
+  color: #f5f0e8;
+  background: #0c0c0e;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  background: #0c0c0e;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #0c0c0e;
+  color: #f5f0e8;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+/* ===== PRIVATE CINEMA ROOM ===== */
+
+.leave-btn {
+  background: transparent;
+  border: 1px solid #ffffff35;
+  color: #d9b779;
+  padding: 11px 18px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.leave-btn:hover {
+  border-color: #d9b779;
+}
+
+.room-page {
+  width: 100%;
+  max-width: 1450px;
+  margin: auto;
+  padding: 55px 8%;
+  flex: 1;
+}
+
+.room-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 25px;
+  margin-bottom: 35px;
+}
+
+.room-heading h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 38px;
+  color: #d9b779;
+  margin-bottom: 8px;
+}
+
+.room-heading p {
+  color: #99969a;
+  font-size: 13px;
+}
+
+.invite-card {
+  min-width: 210px;
+  padding: 18px;
+  border: 1px solid #c6a46b55;
+  background: #181719;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.invite-card span,
+.sidebar-label,
+.video-input-card label {
+  color: #a99a7d;
+  font-size: 9px;
+  letter-spacing: 2px;
+}
+
+.invite-card strong {
+  color: #e6c68d;
+  font-size: 21px;
+  letter-spacing: 2px;
+}
+
+.invite-card button {
+  background: transparent;
+  border: 1px solid #c6a46b;
+  color: #d9b779;
+  padding: 9px;
+  border-radius: 4px;
+}
+
+.cinema-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 270px;
+  gap: 25px;
+}
+
+.video-screen {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #050506;
+  border: 1px solid #c6a46b55;
+  border-radius: 8px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 45px #c6a46b0c;
+}
+
+.movie-player {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  object-fit: contain;
+}
+
+.empty-screen {
+  text-align: center;
+  padding: 20px;
+}
+
+.big-play {
+  width: 65px;
+  height: 65px;
+  margin: 0 auto 20px;
+  border: 1px solid #d9b779;
+  border-radius: 50%;
+  color: #d9b779;
+  display: grid;
+  place-items: center;
+  padding-left: 4px;
+  font-size: 22px;
+}
+
+.empty-screen h2 {
+  font-family: 'Playfair Display', serif;
+  color: #d9b779;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.empty-screen p {
+  color: #888;
+  font-size: 12px;
+}
+
+.video-input-card,
+.sidebar-card {
+  background: #181719;
+  border: 1px solid #ffffff18;
+  border-radius: 8px;
+  padding: 22px;
+  margin-top: 20px;
+}
+
+.video-input-card input {
+  width: 100%;
+  padding: 13px;
+  margin-top: 12px;
+  background: #0e0e10;
+  color: white;
+  border: 1px solid #ffffff25;
+  border-radius: 5px;
+  outline: none;
+}
+
+.video-input-card input:focus {
+  border-color: #c6a46b;
+}
+
+.video-input-card p {
+  color: #858187;
+  font-size: 11px;
+  line-height: 1.7;
+  margin-top: 10px;
+}
+
+.room-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.sidebar-card {
+  margin-top: 0;
+}
+
+.online-status {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #d9b779;
+  font-size: 13px;
+  margin: 14px 0 20px;
+}
+
+.online-status span {
+  width: 8px;
+  height: 8px;
+  background: #66bd83;
+  border-radius: 50%;
+}
+
+.sidebar-card hr {
+  border: 0;
+  border-top: 1px solid #ffffff18;
+  margin-bottom: 20px;
+}
+
+.sidebar-card strong {
+  display: block;
+  color: #eee6d9;
+  font-size: 14px;
+  margin: 10px 0 22px;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-card .code-text {
+  color: #d9b779;
+  letter-spacing: 1px;
+}
+
+.sidebar-card .full-btn {
+  font-size: 11px;
+  padding: 12px 8px;
+}
+
+.sidebar-note {
+  padding: 18px;
+  border: 1px solid #c6a46b35;
+  border-radius: 8px;
+  background: #c6a46b0a;
+  display: flex;
+  gap: 12px;
+}
+
+.sidebar-note span {
+  color: #d9b779;
+}
+
+.sidebar-note p {
+  color: #99969a;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.error-message {
+  color: #ff7777 !important;
+  margin-top: 15px;
+  margin-bottom: 0 !important;
+  line-height: 1.5;
+}
+
+.primary-btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 800px) {
+  .room-page {
+    padding: 35px 6%;
+  }
+
+  .room-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .room-heading h1 {
+    font-size: 30px;
+  }
+
+  .cinema-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .room-sidebar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .invite-card {
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .leave-btn {
+    padding: 9px 10px;
+    font-size: 10px;
+  }
+
+  .empty-screen h2 {
+    font-size: 17px;
+  }
+
+  .empty-screen p {
+    font-size: 10px;
+  }
+
+  .video-input-card,
+  .sidebar-card {
+    padding: 16px;
+  }
+}
+
+/* AWAN CINEMA VIDEO PLAYER */
+
+.video-screen {
+  overflow: hidden;
+  position: relative;
+}
+
+.movie-player {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: none;
+  background: #000;
+  object-fit: contain;
+}
+
+.video-input-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.video-input-card > p {
+  color: #99969a;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.video-input-card input {
+  width: 100%;
+}
+
+.clear-video-btn {
+  background: transparent;
+  border: 1px solid #ffffff35;
+  color: #d9b779;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.clear-video-btn:hover {
+  border-color: #d9b779;
+}
+
+.error-message {
+  color: #ff8585 !important;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .movie-player {
+    min-height: 230px;
+  }
+}
