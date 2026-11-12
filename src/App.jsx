@@ -1,9 +1,7 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react'
 import './App.css'
 import { supabase } from './supabase'
 
-// Deteksi YouTube
 function getYouTubeId(link) {
   try {
     const url = new URL(link)
@@ -11,15 +9,9 @@ function getYouTubeId(link) {
 
     if (host === 'youtu.be') return url.pathname.slice(1)
 
-    if (
-      ['youtube.com', 'm.youtube.com', 'youtube-nocookie.com'].includes(host)
-    ) {
+    if (['youtube.com', 'm.youtube.com', 'youtube-nocookie.com'].includes(host)) {
       if (url.pathname === '/watch') return url.searchParams.get('v')
-
-      const match = url.pathname.match(
-        /^\/(embed|shorts|live)\/([^/?]+)/
-      )
-
+      const match = url.pathname.match(/^\/(embed|shorts|live)\/([^/?]+)/)
       return match ? match[2] : null
     }
 
@@ -27,6 +19,30 @@ function getYouTubeId(link) {
   } catch {
     return null
   }
+}
+
+function loadYouTubeAPI() {
+  return new Promise((resolve, reject) => {
+    if (window.YT?.Player) {
+      resolve(window.YT)
+      return
+    }
+
+    const previousCallback = window.onYouTubeIframeAPIReady
+    window.onYouTubeIframeAPIReady = () => {
+      previousCallback?.()
+      if (window.YT?.Player) resolve(window.YT)
+      else reject(new Error('YouTube API gagal dimuat.'))
+    }
+
+    if (!document.getElementById('youtube-iframe-api')) {
+      const script = document.createElement('script')
+      script.id = 'youtube-iframe-api'
+      script.src = 'https://www.youtube.com/iframe_api'
+      script.onerror = () => reject(new Error('Gagal memuat YouTube API.'))
+      document.head.appendChild(script)
+    }
+  })
 }
 
 function App() {
@@ -38,23 +54,104 @@ function App() {
   const [isHost, setIsHost] = useState(false)
   const [hostToken, setHostToken] = useState('')
   const [roomData, setRoomData] = useState(null)
-
   const [videoUrl, setVideoUrl] = useState('')
   const [videoInput, setVideoInput] = useState('')
   const [videoError, setVideoError] = useState('')
   const [playbackPlaying, setPlaybackPlaying] = useState(false)
-
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [chatMessages, setChatMessages] = useState([])
+  const [chatInput, setChatInput] = useState('')
+  const [chatSending, setChatSending] = useState(false)
+  const [chatError, setChatError] = useState('')
+  const [unreadChatCount, setUnreadChatCount] = useState(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [guestPlaybackReady, setGuestPlaybackReady] = useState(false)
+  const [youtubeReady, setYoutubeReady] = useState(false)
 
   const videoRef = useRef(null)
   const youtubeRef = useRef(null)
   const youtubeContainerRef = useRef(null)
+  const screenRef = useRef(null)
+  const chatCardRef = useRef(null)
   const lastPublishRef = useRef(0)
+  const seenChatIdsRef = useRef(new Set())
+  const chatInitializedRef = useRef(false)
+  const restoreAttemptedRef = useRef(false)
 
   const youtubeId = getYouTubeId(videoUrl)
+  // Menyimpan ruangan terakhir secara otomatis.
+useEffect(() => {
+  if (!isInRoom || !roomData?.room_code) return
 
-  // Kirim perubahan pemutaran ke database
+  const session = {
+    room_code: roomData.room_code,
+    isHost
+  }
+
+  localStorage.setItem(
+    'awan_active_room',
+    JSON.stringify(session)
+  )
+}, [isInRoom, roomData?.room_code, isHost])
+
+// Memulihkan ruangan terakhir ketika website dibuka.
+useEffect(() => {
+  if (restoreAttemptedRef.current) return
+
+  restoreAttemptedRef.current = true
+
+  const saved = localStorage.getItem('awan_active_room')
+
+  if (!saved) return
+
+  const restoreRoom = async () => {
+    try {
+      const session = JSON.parse(saved)
+      const code = session.room_code
+
+      if (!code) throw new Error('Kode ruangan tidak tersedia.')
+
+      const { data, error } = await supabase.rpc('get_room', {
+        p_room_code: code
+      })
+
+      if (error || !data?.id) {
+        throw new Error('Ruangan sudah tidak tersedia.')
+      }
+
+      const savedToken = session.isHost
+        ? localStorage.getItem(`awan_host_${code}`) || ''
+        : ''
+
+      setHostToken(savedToken)
+      setIsHost(Boolean(savedToken))
+      setRoomData(data)
+      setRoomCode(data.room_code)
+      setVideoUrl(data.video_url || '')
+      setVideoInput(data.video_url || '')
+      setPlaybackPlaying(Boolean(data.is_playing))
+
+      setChatMessages([])
+      setUnreadChatCount(0)
+      setGuestPlaybackReady(false)
+      setYoutubeReady(false)
+
+      seenChatIdsRef.current = new Set()
+      chatInitializedRef.current = false
+
+      setIsInRoom(true)
+      setShowRoom(false)
+
+    } catch (err) {
+      console.log('Pemulihan ruangan:', err.message)
+      localStorage.removeItem('awan_active_room')
+    }
+  }
+
+  restoreRoom()
+}, [])
+
   const publishPlayback = useCallback(async (url, playing, position) => {
     if (!isHost || !hostToken || !roomData?.room_code) return
 
@@ -71,12 +168,12 @@ function App() {
       return
     }
 
-    if (!data) {
-      console.error('Token Host tidak valid.')
-    }
-  }, [isHost, hostToken, roomData])
+    if (!data) console.error('Token Host tidak valid.')
+  }, [isHost, hostToken, roomData?.room_code])
 
-  // Buat ruang
+  const latestRef = useRef({})
+  latestRef.current = { isHost, videoUrl, publishPlayback }
+
   const handleCreateRoom = async () => {
     if (!roomName.trim()) {
       setError('Masukkan nama ruang terlebih dahulu.')
@@ -104,7 +201,6 @@ function App() {
       setHostToken(token)
       setIsHost(true)
       setRoomCode(code)
-
       setRoomData({
         ...data,
         room_name: roomName.trim(),
@@ -117,6 +213,12 @@ function App() {
       setVideoUrl('')
       setVideoInput('')
       setPlaybackPlaying(false)
+      setChatMessages([])
+      setUnreadChatCount(0)
+      setGuestPlaybackReady(false)
+      setYoutubeReady(false)
+      seenChatIdsRef.current = new Set()
+      chatInitializedRef.current = false
       setIsInRoom(true)
       setShowRoom(false)
     } catch (err) {
@@ -126,7 +228,6 @@ function App() {
     }
   }
 
-  // Gabung ruang
   const handleJoinRoom = async () => {
     if (!roomCode.trim()) {
       setError('Masukkan kode undangan terlebih dahulu.')
@@ -138,27 +239,28 @@ function App() {
 
     try {
       const code = roomCode.trim().toUpperCase()
-
       const { data, error } = await supabase.rpc('get_room', {
         p_room_code: code
       })
 
       if (error) throw error
-      if (!data?.id) {
-        throw new Error('Kode ruang tidak ditemukan.')
-      }
+      if (!data?.id) throw new Error('Kode ruang tidak ditemukan.')
 
       const savedToken = localStorage.getItem(`awan_host_${code}`) || ''
 
       setHostToken(savedToken)
       setIsHost(Boolean(savedToken))
+      setGuestPlaybackReady(false)
+      setYoutubeReady(false)
       setRoomData(data)
       setRoomCode(data.room_code)
-
       setVideoUrl(data.video_url || '')
       setVideoInput(data.video_url || '')
       setPlaybackPlaying(Boolean(data.is_playing))
-
+      setChatMessages([])
+      setUnreadChatCount(0)
+      seenChatIdsRef.current = new Set()
+      chatInitializedRef.current = false
       setIsInRoom(true)
       setShowRoom(false)
     } catch (err) {
@@ -168,7 +270,6 @@ function App() {
     }
   }
 
-  // Ganti video
   const handleLoadVideo = async () => {
     if (!isHost) return
 
@@ -182,10 +283,11 @@ function App() {
     const id = getYouTubeId(link)
 
     if (id) {
+      setYoutubeReady(false)
+      setGuestPlaybackReady(false)
       setVideoUrl(link)
       setPlaybackPlaying(false)
       setVideoError('')
-
       await publishPlayback(link, false, 0)
       return
     }
@@ -193,9 +295,7 @@ function App() {
     try {
       const url = new URL(link)
 
-      if (!['https:', 'http:'].includes(url.protocol)) {
-        throw new Error()
-      }
+      if (!['https:', 'http:'].includes(url.protocol)) throw new Error()
 
       if (!url.pathname.toLowerCase().endsWith('.mp4')) {
         setVideoError('Gunakan tautan YouTube atau file MP4 langsung.')
@@ -205,15 +305,17 @@ function App() {
       setVideoUrl(link)
       setPlaybackPlaying(false)
       setVideoError('')
-
       await publishPlayback(link, false, 0)
     } catch {
       setVideoError('Tautan video tidak valid.')
     }
   }
 
-  // Keluar ruang
   const leaveRoom = () => {
+    localStorage.removeItem('awan_active_room')
+    youtubeRef.current?.destroy?.()
+    youtubeRef.current = null
+
     setIsInRoom(false)
     setIsHost(false)
     setHostToken('')
@@ -222,9 +324,15 @@ function App() {
     setVideoInput('')
     setRoomCode('')
     setPlaybackPlaying(false)
+    setChatMessages([])
+    setChatInput('')
+    setUnreadChatCount(0)
+    setGuestPlaybackReady(false)
+    setYoutubeReady(false)
+    seenChatIdsRef.current = new Set()
+    chatInitializedRef.current = false
   }
 
-  // Salin kode
   const copyRoomCode = async () => {
     try {
       await navigator.clipboard.writeText(roomData.room_code)
@@ -234,177 +342,371 @@ function App() {
     }
   }
 
-  // Load YouTube IFrame API
+  const startGuestPlayback = () => {
+    if (isHost) return
+
+    if (youtubeId) {
+      const player = youtubeRef.current
+
+      if (!youtubeReady || !player?.playVideo) {
+        alert('Video masih disiapkan. Tunggu sebentar lalu coba lagi.')
+        return
+      }
+
+      setGuestPlaybackReady(true)
+
+      try {
+        player.playVideo()
+      } catch (err) {
+        console.error('Guest gagal memulai YouTube:', err)
+      }
+
+      return
+    }
+
+    const mp4 = videoRef.current
+
+    if (mp4?.play) {
+      mp4.play()
+        .then(() => setGuestPlaybackReady(true))
+        .catch((err) => {
+          console.error('Guest gagal memulai MP4:', err)
+          alert('Browser belum mengizinkan pemutaran video.')
+        })
+    }
+  }
+
+  const handleFullscreen = async () => {
+    const screen = screenRef.current
+    if (!screen) return
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen()
+      } else if (screen.requestFullscreen) {
+        await screen.requestFullscreen()
+      }
+    } catch (err) {
+      console.error('Full Screen tidak tersedia:', err)
+      alert('Full Screen tidak didukung oleh browser ini. Coba buka melalui situs HTTPS AWAN CINEMA.')
+    }
+  }
+
+  useEffect(() => {
+    const updateFullscreen = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement))
+      if (!document.fullscreenElement) setUnreadChatCount(0)
+    }
+
+    document.addEventListener('fullscreenchange', updateFullscreen)
+    return () => document.removeEventListener('fullscreenchange', updateFullscreen)
+  }, [])
+
+  const openChatFromFullscreen = async () => {
+    setUnreadChatCount(0)
+
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen()
+      } catch (err) {
+        console.error('Gagal keluar Full Screen:', err)
+      }
+    }
+
+    setTimeout(() => {
+      chatCardRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      })
+    }, 150)
+  }
+
+  // Membuat YouTube Player.
   useEffect(() => {
     if (!youtubeId || !isInRoom) return
 
     let cancelled = false
+    let createdPlayer = null
 
-    const loadYouTube = () => {
-      return new Promise((resolve) => {
-        if (window.YT?.Player) {
-          resolve(window.YT)
-          return
-        }
+    setYoutubeReady(false)
 
-        const previous = window.onYouTubeIframeAPIReady
+    loadYouTubeAPI()
+      .then((YT) => {
+        if (cancelled || !youtubeContainerRef.current) return
 
-        window.onYouTubeIframeAPIReady = () => {
-          previous?.()
-          resolve(window.YT)
-        }
+        const playerElement = document.createElement('div')
+        youtubeContainerRef.current.replaceChildren(playerElement)
 
-        if (!document.getElementById('youtube-iframe-api')) {
-          const script = document.createElement('script')
-          script.id = 'youtube-iframe-api'
-          script.src = 'https://www.youtube.com/iframe_api'
-          document.head.appendChild(script)
-        }
-      })
-    }
-
-    loadYouTube().then((YT) => {
-      if (cancelled || !youtubeContainerRef.current) return
-
-      youtubeRef.current?.destroy?.()
-
-      youtubeRef.current = new YT.Player(youtubeContainerRef.current, {
-        videoId: youtubeId,
-        width: '100%',
-        height: '100%',
-
-        playerVars: {
-          autoplay: 0,
-          controls: isHost ? 1 : 0,
-          disablekb: isHost ? 0 : 1,
-          playsinline: 1,
-          rel: 0
-        },
-
-        events: {
-          onReady: () => {
-            console.log('AWAN CINEMA YouTube siap.')
+        createdPlayer = new YT.Player(playerElement, {
+          videoId: youtubeId,
+          width: '100%',
+          height: '100%',
+          playerVars: {
+            autoplay: 0,
+            controls: latestRef.current.isHost ? 1 : 0,
+            disablekb: latestRef.current.isHost ? 0 : 1,
+            playsinline: 1,
+            rel: 0,
+            enablejsapi: 1,
+            origin: window.location.origin,
+            fs: 0
           },
+          events: {
+            onReady: () => {
+              console.log('AWAN CINEMA YouTube siap.')
+              if (!cancelled) setYoutubeReady(true)
+            },
 
-          onStateChange: (event) => {
-            if (!isHost) return
+            onError: (event) => {
+              console.error('YouTube Player error:', event.data)
+              if (!cancelled) setYoutubeReady(false)
+            },
 
-            const state = event.data
-            const playing = state === YT.PlayerState.PLAYING
+            onStateChange: (event) => {
+              const current = latestRef.current
+              if (!current.isHost) return
 
-            if (
-              state === YT.PlayerState.PLAYING ||
-              state === YT.PlayerState.PAUSED ||
-              state === YT.PlayerState.ENDED
-            ) {
-              setPlaybackPlaying(playing)
+              const state = event.data
+              const playing = state === YT.PlayerState.PLAYING
 
-              publishPlayback(
-                videoUrl,
-                playing,
-                event.target.getCurrentTime()
-              )
+              if (
+                state === YT.PlayerState.PLAYING ||
+                state === YT.PlayerState.PAUSED ||
+                state === YT.PlayerState.ENDED
+              ) {
+                setPlaybackPlaying(playing)
+
+                current.publishPlayback(
+                  current.videoUrl,
+                  playing,
+                  event.target.getCurrentTime()
+                )
+              }
             }
           }
-        }
+        })
+
+        youtubeRef.current = createdPlayer
       })
-    })
+      .catch((err) => console.error('YouTube Player:', err))
 
     return () => {
       cancelled = true
-      youtubeRef.current?.destroy?.()
-      youtubeRef.current = null
-    }
-  }, [youtubeId, isHost, isInRoom, publishPlayback])
 
-  // Sinkronisasi posisi YouTube dari Host
+      if (youtubeRef.current === createdPlayer) {
+        youtubeRef.current = null
+      }
+
+      createdPlayer?.destroy?.()
+    }
+  }, [youtubeId, isInRoom])
+
+  // Sinkronisasi posisi Host ke database.
   useEffect(() => {
     if (!isHost || !youtubeId || !playbackPlaying) return
 
     const timer = setInterval(() => {
       const player = youtubeRef.current
 
-      if (player?.getCurrentTime) {
-        publishPlayback(
-          videoUrl,
-          true,
-          player.getCurrentTime()
-        )
+      if (player?.getCurrentTime && player.getPlayerState?.() === 1) {
+        publishPlayback(videoUrl, true, player.getCurrentTime())
       }
     }, 3000)
 
     return () => clearInterval(timer)
   }, [isHost, youtubeId, playbackPlaying, videoUrl, publishPlayback])
 
-  // Sinkronisasi Guest melalui polling database
+  // Sinkronisasi Guest.
   useEffect(() => {
     if (!isInRoom || isHost || !roomData?.room_code) return
 
+    let active = true
+    let syncing = false
+    let lastCommand = ''
+    let lastSeekTime = 0
+    const code = roomData.room_code
+
     const syncRoom = async () => {
-      const { data, error } = await supabase.rpc('get_room', {
-        p_room_code: roomData.room_code
-      })
+      if (syncing) return
+      syncing = true
 
-      if (error || !data?.id) return
+      try {
+        const { data, error } = await supabase.rpc('get_room', {
+          p_room_code: code
+        })
 
-      setRoomData(data)
+        if (!active || error || !data?.id) return
 
-      if ((data.video_url || '') !== videoUrl) {
-        setVideoUrl(data.video_url || '')
-        setVideoInput(data.video_url || '')
-        setPlaybackPlaying(Boolean(data.is_playing))
-        return
-      }
+        if ((data.video_url || '') !== videoUrl) {
+          setRoomData(data)
+          setVideoUrl(data.video_url || '')
+          setVideoInput(data.video_url || '')
+          setPlaybackPlaying(Boolean(data.is_playing))
+          setYoutubeReady(false)
+          setGuestPlaybackReady(false)
+          lastCommand = ''
+          return
+        }
 
-      const position = Number(data.playback_position || 0)
-      const playing = Boolean(data.is_playing)
+        const position = Number(data.playback_position || 0)
+        const playing = Boolean(data.is_playing)
 
-      setPlaybackPlaying(playing)
+        setPlaybackPlaying((previous) =>
+          previous === playing ? previous : playing
+        )
 
-      if (youtubeId && youtubeRef.current?.getCurrentTime) {
         const player = youtubeRef.current
-        const current = player.getCurrentTime()
 
-        if (Math.abs(current - position) > 2.5) {
-          player.seekTo(position, true)
+        if (youtubeId && player?.getCurrentTime && player.getPlayerState) {
+          const state = player.getPlayerState()
+
+          if (state === 3) return
+
+          const current = player.getCurrentTime()
+          const now = Date.now()
+
+          if (
+            Math.abs(current - position) > 5 &&
+            now - lastSeekTime > 5000
+          ) {
+            player.seekTo(position, true)
+            lastSeekTime = now
+          }
+
+          if (
+            playing &&
+            guestPlaybackReady &&
+            youtubeReady &&
+            state !== 1 &&
+            lastCommand !== 'play'
+          ) {
+            lastCommand = 'play'
+            player.playVideo()
+          }
+
+          if (!playing && state === 1 && lastCommand !== 'pause') {
+            lastCommand = 'pause'
+            player.pauseVideo()
+          }
+
+          if (playing && state === 1) lastCommand = 'playing'
+          if (!playing && state !== 1) lastCommand = 'paused'
         }
 
-        const state = player.getPlayerState()
+        if (!youtubeId && videoRef.current) {
+          const mp4 = videoRef.current
 
-        if (playing && state !== 1) player.playVideo()
-        if (!playing && state === 1) player.pauseVideo()
-      }
+          if (Math.abs(mp4.currentTime - position) > 5) {
+            mp4.currentTime = position
+          }
 
-      if (!youtubeId && videoRef.current) {
-        const player = videoRef.current
+          if (playing && guestPlaybackReady && mp4.paused) {
+            mp4.play().catch(() => {})
+          }
 
-        if (Math.abs(player.currentTime - position) > 2.5) {
-          player.currentTime = position
+          if (!playing && !mp4.paused) {
+            mp4.pause()
+          }
         }
-
-        if (playing && player.paused) {
-          player.play().catch(() => {})
-        }
-
-        if (!playing && !player.paused) {
-          player.pause()
-        }
+      } finally {
+        syncing = false
       }
     }
 
     syncRoom()
 
-    const timer = setInterval(syncRoom, 1000)
+    const timer = setInterval(syncRoom, 2000)
+
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [
+    isInRoom,
+    isHost,
+    roomData?.room_code,
+    youtubeId,
+    videoUrl,
+    guestPlaybackReady,
+    youtubeReady
+  ])
+
+  // Mengambil pesan chat.
+  const loadChatMessages = useCallback(async () => {
+    if (!roomData?.room_code) return
+
+    const { data, error } = await supabase.rpc('get_messages', {
+      p_room_code: roomData.room_code
+    })
+
+    if (error) {
+      console.error('Gagal mengambil chat:', error.message)
+      setChatError('Chat belum dapat dimuat.')
+      return
+    }
+
+    const messages = Array.isArray(data) ? data : []
+
+    if (!chatInitializedRef.current) {
+      seenChatIdsRef.current = new Set(messages.map((item) => item.id))
+      chatInitializedRef.current = true
+    } else {
+      const incoming = messages.filter((item) =>
+        !seenChatIdsRef.current.has(item.id) &&
+        item.sender_name !== (isHost ? 'Host' : 'Guest')
+      )
+
+      if (incoming.length && document.fullscreenElement) {
+        setUnreadChatCount((count) => count + incoming.length)
+      }
+
+      messages.forEach((item) => seenChatIdsRef.current.add(item.id))
+    }
+
+    setChatMessages(messages)
+  }, [roomData?.room_code, isHost])
+
+  useEffect(() => {
+    if (!isInRoom || !roomData?.room_code) return
+
+    loadChatMessages()
+    const timer = setInterval(loadChatMessages, 2000)
 
     return () => clearInterval(timer)
-  }, [isInRoom, isHost, roomData?.room_code, videoUrl, youtubeId])
+  }, [isInRoom, roomData?.room_code, loadChatMessages])
 
-  // Perubahan video MP4 oleh Host
+  const sendChatMessage = async (event) => {
+    event.preventDefault()
+
+    const message = chatInput.trim()
+    if (!message || !roomData?.room_code || chatSending) return
+
+    setChatSending(true)
+    setChatError('')
+
+    try {
+      const { data, error } = await supabase.rpc('send_message', {
+        p_room_code: roomData.room_code,
+        p_sender_name: isHost ? 'Host' : 'Guest',
+        p_message: message
+      })
+
+      if (error) throw error
+      if (!data) throw new Error('Pesan tidak berhasil dikirim.')
+
+      setChatInput('')
+      await loadChatMessages()
+    } catch (err) {
+      setChatError(err.message || 'Pesan gagal dikirim.')
+    } finally {
+      setChatSending(false)
+    }
+  }
+
   const handleMP4Play = () => {
     if (!isHost) return
 
     setPlaybackPlaying(true)
-
     publishPlayback(
       videoUrl,
       true,
@@ -416,7 +718,6 @@ function App() {
     if (!isHost) return
 
     setPlaybackPlaying(false)
-
     publishPlayback(
       videoUrl,
       false,
@@ -428,7 +729,6 @@ function App() {
     if (!isHost) return
 
     const now = Date.now()
-
     if (now - lastPublishRef.current < 3000) return
 
     lastPublishRef.current = now
@@ -448,7 +748,6 @@ function App() {
     setShowRoom(true)
   }
 
-  // HALAMAN RUANG NOBAR
   if (isInRoom && roomData) {
     return (
       <div className="app">
@@ -467,9 +766,8 @@ function App() {
           <div className="room-heading">
             <div>
               <div className="eyebrow">
-                <span></span> YOUR PRIVATE CINEMA
+                <span /> YOUR PRIVATE CINEMA
               </div>
-
               <h1>{roomData.room_name}</h1>
               <p>Nikmati film bersama orang tersayang.</p>
             </div>
@@ -483,11 +781,11 @@ function App() {
 
           <div className="cinema-layout">
             <section className="player-section">
-              <div className="video-screen">
+              <div className="video-screen" ref={screenRef}>
                 {youtubeId ? (
                   <div
                     ref={youtubeContainerRef}
-                    className="movie-player"
+                    className={`movie-player ${isHost ? 'host-player' : 'guest-player'}`}
                   />
                 ) : videoUrl ? (
                   <video
@@ -504,11 +802,40 @@ function App() {
                   <div className="empty-screen">
                     <div className="big-play">▶</div>
                     <h2>Layar Bioskop Pribadi</h2>
-                    <p>
-                      Menunggu Host memasukkan tautan video.
-                    </p>
+                    <p>Menunggu Host memasukkan tautan video.</p>
                   </div>
                 )}
+
+                {!isHost && videoUrl && !guestPlaybackReady && (
+                  <button
+                    className="primary-btn guest-start-btn"
+                    onClick={startGuestPlayback}
+                    type="button"
+                    disabled={Boolean(youtubeId) && !youtubeReady}
+                  >
+                    {youtubeId && !youtubeReady
+                      ? 'MENYIAPKAN VIDEO…'
+                      : '▶ MULAI MENONTON'}
+                  </button>
+                )}
+
+                {isFullscreen && unreadChatCount > 0 && (
+                  <button
+                    className="fullscreen-chat-badge"
+                    onClick={openChatFromFullscreen}
+                    type="button"
+                  >
+                    💬 {unreadChatCount} pesan baru · Lihat chat
+                  </button>
+                )}
+
+                <button
+                  className="fullscreen-btn"
+                  onClick={handleFullscreen}
+                  type="button"
+                >
+                  ⛶ Full Screen
+                </button>
               </div>
 
               <div className="video-input-card">
@@ -544,6 +871,8 @@ function App() {
                           setVideoUrl('')
                           setVideoInput('')
                           setPlaybackPlaying(false)
+                          setYoutubeReady(false)
+                          setGuestPlaybackReady(false)
                           await publishPlayback('', false, 0)
                         }}
                       >
@@ -553,23 +882,80 @@ function App() {
                   </>
                 ) : (
                   <p>
-                    <b>Mode Penonton.</b> Host sedang mengendalikan
-                    pemutaran film. Tunggu Host memilih video.
+                    <b>Mode Penonton.</b> Host sedang mengendalikan pemutaran
+                    film. Tunggu Host memilih video.
                   </p>
                 )}
 
-                <p>
-                  Mendukung YouTube dan file MP4 langsung.
-                </p>
+                <p>Mendukung YouTube dan file MP4 langsung.</p>
               </div>
             </section>
 
             <aside className="room-sidebar">
+              <div className="chat-card" ref={chatCardRef}>
+                <div className="chat-heading">
+                  <strong>Live Chat</strong>
+                  <span>Ruang Nobar</span>
+                </div>
+
+                <div className="chat-messages">
+                  {chatMessages.length === 0 ? (
+                    <p className="chat-empty">
+                      Belum ada pesan. Mulai obrolan!
+                    </p>
+                  ) : (
+                    chatMessages.map((item) => (
+                      <div
+                        className={`chat-message ${
+                          item.sender_name === (isHost ? 'Host' : 'Guest')
+                            ? 'my-message'
+                            : ''
+                        }`}
+                        key={item.id}
+                      >
+                        <strong>{item.sender_name || 'Penonton'}</strong>
+                        <p>{item.message}</p>
+                        <small>
+                          {item.created_at
+                            ? new Date(item.created_at).toLocaleTimeString(
+                                'id-ID',
+                                {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }
+                              )
+                            : ''}
+                        </small>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {chatError && (
+                  <p className="error-message">{chatError}</p>
+                )}
+
+                <form className="chat-form" onSubmit={sendChatMessage}>
+                  <input
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    placeholder="Tulis pesan..."
+                    maxLength={1000}
+                  />
+
+                  <button
+                    type="submit"
+                    disabled={chatSending || !chatInput.trim()}
+                  >
+                    {chatSending ? '...' : 'Kirim'}
+                  </button>
+                </form>
+              </div>
+
               <div className="sidebar-card">
                 <span className="sidebar-label">STATUS RUANG</span>
-
                 <div className="online-status">
-                  <span></span> Ruang aktif
+                  <span /> Ruang aktif
                 </div>
 
                 <hr />
@@ -581,9 +967,7 @@ function App() {
                 <strong>{roomData.room_name}</strong>
 
                 <span className="sidebar-label">KODE UNDANGAN</span>
-                <strong className="code-text">
-                  {roomData.room_code}
-                </strong>
+                <strong className="code-text">{roomData.room_code}</strong>
 
                 <button
                   className="primary-btn full-btn"
@@ -613,7 +997,6 @@ function App() {
     )
   }
 
-  // HALAMAN UTAMA
   return (
     <div className="app">
       <header className="navbar">
@@ -621,14 +1004,13 @@ function App() {
           <span className="brand-icon">A</span>
           <span>AWAN <b>CINEMA</b></span>
         </div>
-
         <span className="private-label">PRIVATE CINEMA</span>
       </header>
 
       <main className="hero">
         <div className="hero-content">
           <div className="eyebrow">
-            <span></span> YOUR PRIVATE MOVIE ROOM
+            <span /> YOUR PRIVATE MOVIE ROOM
           </div>
 
           <h1>

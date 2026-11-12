@@ -39,7 +39,7 @@ button {
 }
 
 .navbar {
-  height: 82px;
+  min-height: 82px;
   padding: 0 8%;
   display: flex;
   align-items: center;
@@ -310,6 +310,239 @@ footer {
   margin-top: 25px;
 }
 
+/* HALAMAN ROOM */
+.room-page {
+  width: 100%;
+  max-width: 1450px;
+  margin: 0 auto;
+  padding: 35px 5%;
+}
+
+.room-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.room-heading h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(24px, 4vw, 36px);
+  color: #d9b779;
+}
+
+.room-heading p {
+  color: #99969a;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.invite-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.invite-card > span {
+  font-size: 10px;
+  color: #aaa;
+  letter-spacing: 2px;
+}
+
+.invite-card strong {
+  color: #d9b779;
+  font-size: 23px;
+  letter-spacing: 3px;
+}
+
+.invite-card button {
+  background: transparent;
+  border: 1px solid #c6a46b;
+  color: #d9b779;
+  padding: 7px 13px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.cinema-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 25px;
+  align-items: start;
+}
+
+.player-section {
+  min-width: 0;
+}
+
+.video-screen {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1px solid #c6a46b55;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.movie-player {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  object-fit: contain;
+}
+
+.video-screen iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.video-screen:fullscreen {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+}
+
+.video-screen:fullscreen .movie-player,
+.video-screen:fullscreen iframe {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.video-input-card {
+  margin-top: 20px;
+  padding: 22px;
+  border: 1px solid #ffffff18;
+  background: #171619;
+  border-radius: 8px;
+}
+
+.video-input-card label {
+  display: block;
+  font-size: 10px;
+  color: #d9b779;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+}
+
+.video-input-card input {
+  width: 100%;
+  padding: 13px;
+  background: #0e0e10;
+  border: 1px solid #ffffff25;
+  border-radius: 5px;
+  color: white;
+  outline: none;
+}
+
+.video-input-card input:focus {
+  border-color: #c6a46b;
+}
+
+.video-input-card > p {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #99969a;
+}
+
+.clear-video-btn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 11px;
+  border: 1px solid #ffffff30;
+  background: transparent;
+  color: #d9b779;
+  border-radius: 5px;
+}
+
+.error-message {
+  color: #ff7777;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.room-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.sidebar-card {
+  padding: 22px;
+  background: #171619;
+  border: 1px solid #ffffff18;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.sidebar-label {
+  font-size: 9px;
+  color: #a59a87;
+  letter-spacing: 2px;
+  margin-top: 8px;
+}
+
+.sidebar-card strong {
+  font-size: 13px;
+  color: #eee5d8;
+}
+
+.online-status {
+  color: #8fc99b;
+  font-size: 12px;
+}
+
+.online-status span {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: #8fc99b;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.sidebar-card hr {
+  border: 0;
+  border-top: 1px solid #ffffff18;
+}
+
+.code-text {
+  color: #d9b779 !important;
+  letter-spacing: 2px;
+}
+
+.sidebar-note {
+  display: flex;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #c6a46b33;
+  background: #c6a46b0c;
+  border-radius: 7px;
+}
+
+.sidebar-note span {
+  color: #d9b779;
+}
+
+.sidebar-note p {
+  font-size: 11px;
+  color: #b6a995;
+  line-height: 1.7;
+}
+
+/* TAMPILAN HP */
 @media (max-width: 800px) {
   .hero {
     flex-direction: column;
@@ -342,6 +575,32 @@ footer {
     gap: 12px;
     flex-wrap: wrap;
   }
+
+  .cinema-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .room-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .invite-card {
+    align-items: flex-start;
+  }
+
+  .room-page {
+    padding: 25px 4%;
+  }
+
+  .video-input-card {
+    padding: 16px;
+  }
+
+  .room-sidebar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 420px) {
@@ -366,4 +625,267 @@ footer {
   .actions button {
     width: 100%;
   }
+
+  .video-screen {
+    border-radius: 4px;
+  }
+
+  .room-heading h1 {
+    font-size: 25px;
+  }
+}
+
+
+/* TOMBOL FULL SCREEN */
+.fullscreen-btn {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 5;
+  padding: 9px 13px;
+  border: 1px solid #d9b77988;
+  border-radius: 5px;
+  background: #111113dd;
+  color: #f5f0e8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.fullscreen-btn:hover {
+  background: #c6a46b;
+  color: #17130e;
+}
+
+/* GUEST HANYA MENONTON, TIDAK BISA KLIK PLAYER YOUTUBE */
+.guest-player iframe {
+  pointer-events: none;
+}
+
+/* LIVE CHAT */
+.chat-card {
+  min-width: 0;
+  padding: 18px;
+  background: #171619;
+  border: 1px solid #ffffff18;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chat-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ffffff18;
+}
+
+.chat-heading strong {
+  color: #d9b779;
+  font-size: 15px;
+}
+
+.chat-heading span {
+  color: #8f8980;
+  font-size: 10px;
+}
+
+.chat-messages {
+  height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 4px 3px;
+  scrollbar-width: thin;
+  scrollbar-color: #725b38 #171619;
+}
+
+.chat-empty {
+  color: #99969a;
+  font-size: 12px;
+  text-align: center;
+  margin: auto;
+}
+
+.chat-message {
+  max-width: 90%;
+  align-self: flex-start;
+  padding: 10px 12px;
+  border: 1px solid #ffffff16;
+  border-radius: 8px 8px 8px 2px;
+  background: #222024;
+  overflow-wrap: anywhere;
+}
+
+.chat-message.my-message {
+  align-self: flex-end;
+  background: #332919;
+  border-color: #c6a46b44;
+  border-radius: 8px 8px 2px 8px;
+}
+
+.chat-message strong {
+  display: block;
+  color: #d9b779;
+  font-size: 10px;
+  margin-bottom: 5px;
+}
+
+.chat-message p {
+  color: #f5f0e8;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.chat-message small {
+  display: block;
+  color: #89838a;
+  font-size: 9px;
+  text-align: right;
+  margin-top: 5px;
+}
+
+.chat-form {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-form input {
+  min-width: 0;
+  flex: 1;
+  padding: 11px 12px;
+  background: #0e0e10;
+  border: 1px solid #ffffff25;
+  border-radius: 5px;
+  color: #fff;
+  outline: none;
+  font-size: 12px;
+}
+
+.chat-form input:focus {
+  border-color: #c6a46b;
+}
+
+.chat-form button {
+  padding: 0 14px;
+  border: 1px solid #c6a46b;
+  border-radius: 5px;
+  background: #c6a46b;
+  color: #17130e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chat-form button:disabled {
+  cursor: not-allowed;
+  opacity: .5;
+}
+
+.video-screen:fullscreen .fullscreen-btn {
+  position: fixed;
+}
+
+/* PENYESUAIAN LAYAR KECIL */
+@media (max-width: 800px) {
+  .chat-card {
+    width: 100%;
+  }
+
+  .chat-messages {
+    height: 260px;
+  }
+}
+
+@media (max-width: 420px) {
+  .fullscreen-btn {
+    right: 7px;
+    bottom: 7px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+
+  .chat-card {
+    padding: 14px;
+  }
+}
+/* LIVE CHAT DI SAMPING VIDEO */
+.cinema-layout {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+}
+
+.room-sidebar {
+  min-width: 0;
+}
+
+.chat-card {
+  width: 100%;
+  align-self: start;
+}
+
+.chat-messages {
+  overscroll-behavior: contain;
+}
+
+/* LENCANA PESAN BARU SAAT FULL SCREEN */
+.fullscreen-chat-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 20;
+  padding: 11px 15px;
+  border: 1px solid #d9b779;
+  border-radius: 999px;
+  background: #1a1712ee;
+  color: #f5e7ca;
+  box-shadow: 0 4px 22px #0009;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.fullscreen-chat-badge:hover {
+  background: #c6a46b;
+  color: #17130e;
+}
+
+.video-screen:fullscreen .fullscreen-chat-badge {
+  position: fixed;
+}
+
+/* TAMPILAN HP */
+@media (max-width: 800px) {
+  .cinema-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .room-sidebar {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .chat-card {
+    order: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  .fullscreen-chat-badge {
+    top: 10px;
+    right: 10px;
+    padding: 9px 12px;
+    font-size: 11px;
+  }
+}
+.guest-start-btn {
+  position: absolute;
+  z-index: 10;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 14px 22px;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px #0009;
 }
